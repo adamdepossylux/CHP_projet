@@ -1,0 +1,588 @@
+\documentclass[a4paper,12pt,twoside]{report}
+\usepackage[x11names]{xcolor}
+\usepackage[french]{babel}  % Pour le français
+\usepackage[utf8]{inputenc} % Pour taper les caractères accentués
+\usepackage{pgfplots}
+\pgfplotsset{width=8cm,compat=1.8}
+
+\usepgfplotslibrary{patchplots,colormaps}
+\pgfplotsset{
+    cycle list={teal\\gray\\green\\},
+}
+\usepackage[T1]{fontenc}
+\usepackage{amsmath}  % Ces trois paquets donnent accès à 
+\usepackage{amsfonts} % des symboles et formulations
+\usepackage{amstext}  % mathématiques
+\usepackage{hyperref} % Permet de faire automatiquement des liens dans les
+                      % documents
+\usepackage{graphicx} % Permet d'insérer des images
+\DeclareGraphicsExtensions{.png} % Mettre ici la liste des extensions des
+                                 % fichiers images
+
+% On peut choisir la police en utilisant un paquet 
+%\usepackage{newcent}
+\usepackage{lmodern}
+%\usepackage{cmbright} % Computer Modern Bright
+
+% Une des nombreuses manière de modifier les marges par défaut
+\usepackage{geometry}
+\geometry{vmargin=2cm,hmargin=2.5cm,nohead}
+
+% On peut redéfinir certaines longueurs, par exemple l'espacement entre les
+% paragraphes:
+\setlength{\parskip}{0.25cm}
+
+% Quelques définitions 
+\def \rr {{\mathbb R}} % L'ensemble R
+\def \cc {{\mathbb C}} % L'ensemble C
+\def \nn {{\mathbb N}} % L'ensemble N
+\def \zz {{\mathbb Z}} % L'ensemble Z
+
+% Les informations de la page de titre (page de titre séparée pour un 'report').
+
+
+\title{
+Projet CHP:\\
+Résolution de l'équation de la chaleur avec MPI }
+\author{d
+  \and o
+ \and m
+}
+% \thanks: permet de mettre une note de bas de page pour l'auteur
+% \href: insère un lien, ici vers l'application 'mailto'
+% \tt: police monospace
+\date{\today} % \today pour la date courante 
+
+\begin{document}
+
+\maketitle % Page de titre automatique à partir des infos ci-dessus
+
+% La commande cleardoublepage est utilisée pour s'assurer que la page suivante
+% est une page de droite lorque l'on imprime recto-verso.
+\cleardoublepage
+\tableofcontents % Table des matière automatique à partir des chapitres,
+                 % sections, etc du document
+
+\cleardoublepage
+\chapter{Analyse mathématique du problème }
+
+On se place dans un domaine [0,1]x[0,1] de $\mathbb{R}_{2}$  dans lequel on cherche à résoudre l'équation de la chaleur:
+
+
+
+
+\[
+\left\{
+\begin{array}{r c l}
+ \partial_{t} u(x,y,t)- D\Delta u(x,y,t)   &=& f(x,y,t)   \\
+ u|_{\Gamma_{0}}&=&g(x,y,t)  \\
+ u|_{\Gamma_{1}}&=&h(x,y,t)
+\end{array}
+\right.
+\]
+
+
+Pour cela la méthode des différences finies est utilisée et l'opérateur laplacien est approximé  par l’expression: 
+
+$b : u \rightarrow \frac{4u_{ij} -u_{i+1,j} -u_{i-1,j}-u_{i,j+1} -u_{i,j-1}}{hx^{2}+hy^{2}}$.
+
+Le schéma d’Euler implicite à l’aide de différences finies centrées du second orde en espace donne donc :
+\[\frac{ u^{n} - u^{n-1}}{\delta t}- Db u^{n} &=& f(x_{i},y_{j},t_{n})
+\]
+ce qui est équivaut à 
+ 
+\[(1-Db\delta t)u^{n}&=&\delta t f(x_{i},y_{j},t_{n}) + u^{n-1}\]
+ 
+
+\textbf{Nx+2} est le nombre de points dans la direction $\overrightarrow{i}$,  \textbf{Ny+2}, celui dans la direction $\overrightarrow{j}$ et $hx=\frac{1}{ Nx+1}$ et $hy=\frac{1}{ Ny+1}$ sont les pas de discrétisation respectifs. 
+
+$ x_{i}=ihx,  y_{j}=jhy,  t_{n}=n\delta t  , f_{ijn}=f(x_{i}, y_{j},t_{n} ), g_{ijn}=g(x_{i}, y_{j},t_{n} ), h_{ijn}=h(x_{i}, y_{j},t_{n} )$. 
+
+La solution étant recherchée  à l'intérieur du domaine, cela revient à résoudre le système suivant pour i=1,..Nx+2, j=1,..Ny+2 et pour n=1,..nbiter:
+
+
+\[
+\left\{
+\begin{array}{r c l}
+(1-Db\delta t)u^{n}&=&\delta t f_{i,j,n} + u^{n-1}
+   \\
+ u^{0}&=&0\\
+ u|_{\Gamma_{0}}&=&g_{i,j,n}  \\
+ u|_{\Gamma_{1}}&=&h_{i,j,n} \\
+\end{array}
+\right.
+\]
+
+Donc, si on pose $ A$ la matrice qui vaut 
+$(I-DB\delta t)$ à l'intérieur du domaine et 1 au bord avec $B$ la matrice de discrétisation de l'opérateur laplacien, et $F$ le vecteur second membre qui vaut $\delta tf + U $ à l'intérieur du domaine et $g$ et $h$ au bord, le schéma précédent peut se mettre sous la forme $AU=F$.
+
+\clearpage
+$\rightarrow$ Exemple pour {\color{teal}\textbf{Nx+2=Ny+2=3}}: 
+
+
+
+
+\[
+\begin{pmatrix}
+1&0&\cdots&&&&&\cdots&0\\
+0&1&\ddots&&&&&&\vdots \\
+\vdots &\ddots&1&&\\
+&&0&1&0&\\
+& \frac{-D \delta t}{hy^{2}} &0& \frac{-D \delta t}{hx^{2}} &1-2D\delta t (\frac{1}{hx^{2}}+\frac{1}{hy^{2}} )    & \frac{-D \delta t}{hx^{2}}  &0 &\frac{-D \delta t}{hy^{2}} &  \\
+0&  && &0    &1 &0 &&  \\
+  && &   &  &&1&\ddots& \vdots  \\
+\vdots  && &    & & &\ddots & 1 &0  \\
+0& \cdots && &  &  &\cdots &0&1  \\
+\end{pmatrix}
+\begin{pmatrix}
+  u^{n}_{0,0} \\
+  u^{n}_{0,1}\\ 
+     \vdots\\
+\\
+\\
+  \\
+  \\
+   \vdots\\
+ u^{n}__{Ny+1,Nx+1}
+\end{pmatrix} = \begin{pmatrix}
+ 0 \\
+\vdots  \\ 
+\\
+ 0 \\
+
+\delta t f^{n}_{1,1}\\
+ 0\\
+\vdots  \\
+\\
+   0\\
+\end{pmatrix}+\begin{pmatrix}
+ g^{n}_{0,0} \\
+ g^{n}_{0,1} \\
+ g^{n}_{0,2} \\
+ h^{n}_{1,0} \\
+
+ u^{n-1}_{1,1}\\
+  h^{n}_{1,2} \\
+
+ g^{n}_{2,0} \\
+ g^{n}_{2,1} \\
+ g^{n}_{2,2} \\
+
+\end{pmatrix} \]
+
+
+
+La matrice est symétrique définie positive, pentadiagonale, à diagonale fortement dominante et irréductible donc le système est inversible et  admet une unique solution.
+
+On peut donc utiliser la méthode du gradient conjugué pour résoudre ce problème.
+
+
+
+
+
+\chapter{Explication du parallélisme}
+
+{\section{
+\textbf{Découpage du vecteur solution}}}
+
+Pour implémenter cet algorithme en parallèle, nous choisissons de répartir le calcul des composantes  du vecteur solution "équitablement" selon les processeurs. Pour cela nous utilisons la bibliothèque MPI, et la fonction "charge"qui fournit les indices respectifs du début (i1) et fin (iN) du vecteur solution propre à chaque processeur et ceci, en lui passant le nombre total de composantes du vecteur initial \textbf{(Nx+2)*(Ny+2).} en argument.
+
+Exemple pour \textbf{Nx+2=Ny+2=3:}
+
+Si U est l'inconnue, (Nx+2)*(Ny+2) vaut 6 donc le processeur 0 s'ocuppera de calculer U(1:2), le processeur 1 calculera U(3:4) et le processeur 2 calculera U(5:6).
+
+
+
+
+
+
+
+
+
+
+\section{\textbf{Découpage de la matrice et du second membre}
+}
+La construction du second membre est parallélisée de la même manière tandis que la matrice est d'abord connue de tous puis son stockage en CSR est parallélisé selon les lignes, c'est-à-dire 
+si on considère j, l'indice des lignes et i, l'indice des colonnes, alors tous deux varient de 1 à (Nx+2)*(Ny+2) et chaque processseur construira sa propre matrice CSR de i allant de 1 à (Nx+2)*(Ny+2) et  de j allant de l'indice de début (i1) à l'indice de  fin (iN) fournie par la fonction charge en passant lui nombre (Nx+2)*(Ny+2) en argument. Chaque matrice CSR construite est donc de taille (i1:iN)x((Nx+2)*(Ny+2))
+
+
+
+
+
+\section{\textbf{Méthode du gradient conjugué}
+}
+La méthode du gradient converge en au plus (Nx+2)*(Ny+2) itérations puisque la matrice est symétrique définie positive
+\`A chaque itération, trois produits scalaire   et un produit matrice-vecteur sont implémentés. C'est donc ces deux types d'opérations qui doivent être parallélisées.
+\clearpage
+\begin{itemize}
+\item \textbf{\color{teal}Produit scalaire }
+\end{itemize}
+
+
+
+Le découpage du calcul est fait de la même manière que celui du vecteur solution.
+$\rightarrow$ Exemple  pour \textbf{Nx+2=Ny+2=3}: chaque processeur calculera le produit scalaire de l'indice de début i1 à l'indice de fin iN des deux vecteurs fournis par la fonction charge puis, les parties calculées par chacun sont sommées en une seule qui est connue de tous et ceci, grâce à l'opération \textit{ALLREDUCE}.
+
+
+
+
+
+\begin{itemize}
+\item \textbf{\color{teal}Produit matrice-vecteur et communications }
+\end{itemize}
+
+Chaque processeur ne connaît qu'une partie du vecteur dont il a besoin pour effectuer ce produit, celle-ci correspondant à la partie délimitée par l'indice i1 et iN obtenus précedemment.
+
+Or la matrice étant pentadiagonale, il lui sera nécessaire d'obtenir des composantes d'un vecteur connu d'un autre processeur. Cette étape nécessite donc des communications qui seront effectuées grâce aux commandes\textit{ IRECV} et \textit{ISEND} permettant des  communications non bloquantes.
+
+Celles-ci étant tout de même coûteuses en temps, il est nécessaire de les optimiser. Pour cela, considérons par l'exemple d'une matrice pentadiagonale comme ci-dessous et le champ de calcul nécessaire au processeur \textbf{1}:
+\begin{figure}[htpb!]
+\includegraphics[width=0.6\linewidth]{matrice.JPG}
+ 
+
+\end{figure}
+
+
+
+
+
+\textbf{Réception}
+
+Pour effectuer son produit matrice-vecteur, on constate qu'il a besoin :
+
+- de son propre domaine (où passe la diagonale principale) donc nul besoin de communications à ce niveau là
+
+- du domaine du processeur suivant \textbf{ (2)} , puisque la diagonale droite la plus extérieure passe dans celui-ci. Plus précisemment, comme celle ci se situe à Nx+2 valeurs de la diagonale principale, alors le processeur 2 doit envoyer une partie de son domaine délimitée par son indice de début\textbf{ i1} et l'indice correspondant à \textbf{i1+Nx+2-1=i1+Nx+1} tandis que le processeur \textbf{{\color{Azure4}1}} recevra ces données à partir de l'indice\textbf{ {\color{Azure4}iN+1}} jusqu'à l'indice \textbf{ {\color{Azure4}i1+Nx+2}}
+
+- du domaine du processeur précédent \textbf{{\color{teal}(0)}} puisque la diagonale gauche la plus extérieure  passe dans celui-ci. De même, comme celle ci se situe à \textbf{Nx+2 }valeurs de la diagonale principale, le processeur 0 doit envoyer la partie de son domaine  comprise entre \textbf{{\color{teal}iN-Nx-2+1=iN-Nx-1}}      jusqu'à \textbf{{\color{teal}iN}}  
+ tandis que le processeur \textbf{ {\color{Azure4}1}} le reçoit à partir de l'indice\textbf{ {\color{Azure4} i1-Nx-2} }jusqu'à\textbf{ {\color{Azure4}{ i1-1.}}}
+
+
+
+\textbf{Envoi}
+
+On constate également que son domaine sera utile au processeur:
+
+- \textbf{{\color{teal}(0)}}, auquel il envoie sa partie comprise entre \textbf{{\color{Azure4}i1}} et \textbf{{\color{Azure4}i1+Nx+1 }},et ce dernier le reçoit dans le domaine compris entre\textbf{ {\color{teal} iN+1}} et\textbf{ {\color{teal}iN+Nx+2}}.
+
+- \textbf{(2)}, auquel il envoie sa partie comprise entre {\color{Azure4}\textbf{iN-Nx-1} } et {\color{Azure4}\textbf{iN}} et ce dernier le reçoit dans dans le domaine compris entre \textbf{i1-Nx-2}  et\textbf{ i1-1}.
+
+
+
+
+
+Plus généralement, si \textbf{Me} est le processus opérant:
+
+\begin{tabular}{|l|}
+  \hline
+  $\Uparrow$ Envoie à Me\textbf{+1}:  	[iN-Nx-1, iN]
+  $\Downarrow $ reçoit de Me\textbf{{\color{teal}-1}} : [i1-Nx-2,i1-1] \\
+  \hline
+  $\Uparrow$ Envoie à Me\textbf{{\color{teal}-1} } :  [i1, i1+Nx+1] $\Downarrow$ reçoit de Me\textbf{+1}: [iN+1,iN+Nx+2] \\
+ 
+  \hline
+\end{tabular}
+
+	
+
+
+Ces données reçues, de taille (Nx+2), sont stockées aux indices indiquées  ci-dessus, dans un nouveau vecteur de taille (Nx+2)*(Ny+2) qui contient en plus de celles-ci, les composantes déja connues par le processeur au même endroit. C'est ainsi que le la matrice de taille (i1:iN)x((Nx+2)*(Ny+2)) pourra être multipliée par ce nouveau vecteur.
+
+
+Evidemment pour le processus 0, il n'y pas de communications avec un processus précédent et pour le dernier, il n'y en pas avec un processus suivant.
+
+
+
+\chapter{Processus de validation du code}
+Afin de s'assurer de la validité du code, quelques cas tests sont réalisés\footnote{Les tables de résultats pourront être trouvés en annexe.} avec Nx+2=Ny+2=5:
+
+
+1. $f = 2(y-y^2+x-x^2),  \quad \quad         g=0,          \quad    \quad     h=0$
+
+
+
+
+\begin{figure}[h]
+\begin{minipage}[c]{.46\linewidth}
+\begin{tikzpicture}
+  \begin{axis}
+  [title={Solution stationnaire exacte : x(1-x)y(1-y)},
+xlabel=$x$, ylabel=$y$,
+small,
+view={20}{30}
+] \addplot3+ [colormap/cool][surf] file {probleme1exact.txt};
+  \end{axis}
+  \end{tikzpicture}
+
+   \end{minipage}
+   \hskip 50pt
+   \begin{minipage}[c]{.46\linewidth}
+\begin{tikzpicture}
+  \begin{axis}
+  [
+title={Solution stationnaire approchée},
+xlabel=$x$, ylabel=$y$,
+small,
+view={20}{30}
+]    \addplot3+ [colormap/cool] [surf] file {probleme1approx.txt};
+ 
+  \end{axis}
+\end{tikzpicture}
+   \end{minipage}
+
+\end{figure}
+
+
+
+ 2. $f=g=h=sin(x)+cos(y)$
+ 
+ 
+ 
+\begin{figure}[h]
+\begin{minipage}[c]{.46\linewidth}
+\begin{tikzpicture} 
+\ begin{tikzpicture}
+  \begin{axis}
+  [title={Solution stationnaire exacte : 
+  sin(x)+cos(y)},
+xlabel=$x$, ylabel=$y$,
+small,
+view={20}{30}
+] \addplot3+ [colormap/cool][surf] file {probleme2exact.txt};
+
+  \end{axis}
+  \end{tikzpicture}
+
+   \end{minipage}
+   \hskip 50pt
+   \begin{minipage}[c]{.46\linewidth}
+\begin{tikzpicture}
+  \begin{axis}
+  [
+title={Solution stationnaire approchée},
+xlabel=$x$, ylabel=$y$,
+small,
+view={20}{30}
+]    \addplot3+ [colormap/cool] [surf] file {probleme2approx.txt};
+ 
+  \end{axis}
+\end{tikzpicture}
+   \end{minipage}
+
+\end{figure}
+
+
+
+
+
+
+
+\clearpage
+3. $f=e^-(x-\frac{Lx}2)^2e^-(y-\frac{Ly}2)^2cos(\frac{\pi}2t), \quad \quad g=0, \quad \quad =1$
+
+
+\begin{figure}[h]
+\begin{minipage}[c]{.46\linewidth}
+\begin{tikzpicture} 
+\ begin{tikzpicture}
+  \begin{axis}
+  [title={Solution instationnaire approchée à $t\approx 4$	},
+xlabel=$x$, ylabel=$y$,
+small,
+view={20}{30}
+] \addplot3+ [colormap/cool][surf] file {probleme31.txt};
+
+  \end{axis}
+  \end{tikzpicture}
+
+   \end{minipage}
+   \hskip 50pt
+   \begin{minipage}[c]{.46\linewidth}
+\begin{tikzpicture}
+  \begin{axis}
+  [
+title={Solution stationnaire approchée à $t\approx	8$},
+xlabel=$x$, ylabel=$y$,
+small,
+view={20}{30}
+]    \addplot3+ [colormap/cool] [surf] file {probleme32.txt};
+ 
+  \end{axis}
+\end{tikzpicture}
+   \end{minipage}
+
+\end{figure}
+
+
+On constate que la solution est bien périodique puisque si $\delta t$ vaut 0.01 et si la surface est telle qu'elle est ci-dessus à t=4 et se reproduit quasi-identiquement environ 400 itérations après (soit 400*0.01=4), alors la période est d'environ 4. 
+
+
+\clearpage
+
+
+\chapter{Analyse du parallélisme}
+{\color{teal}
+\textbf{\begin{itemize}
+\item  Courbe de speed up 
+\end{itemize}
+}}
+{\color{teal}
+\textbf{\begin{itemize}
+\item  Courbe d'efficacité
+\end{itemize}
+}}
+
+
+{\color{teal}
+
+\textbf{
+\begin{itemize}
+\item Commentaires et conclusions
+\end{itemize}
+}}
+
+On constate qu'il y a une légère perte de précision lors de la parallélisation du produit scalaire qui serait due, (selon quelques sources internet) à l'addition des flottants. Celà induit une différence (négligeable) sur la solution finale lorsque le programme est parallélisé.
+
+Il peut être aussi ajouté que la parallélisation n'est pas tourjour rentable. En effet, en-dessous d'un certain nombre, la compilation est plus lente en parallèle qu'en séquentiel. Cela est due aux communications qui prendraient plus de temps que les calculs. Cependant, pour de plus grands nombres, il est clair que la parallélisation est plus avantageuse, comme le montre les courbes ci-dessus.
+
+
+\cleardoublepage
+
+\textbf{\huge{Annexes}}
+
+
+
+
+\begin{center}\textbf{{Tableau des résultats }}\end{center}
+
+Problème 1:
+
+\begin{tabular}{|l|l|}
+  \hline
+  Solution exacte & Solution approchée \\
+  \hline
+ 0.0000000000000000 &0.0000000000000000 \\
+ 0.0000000000000000 &0.0000000000000000 \\
+ 0.0000000000000000 &0.0000000000000000 \\
+ 0.0000000000000000 &0.0000000000000000 \\
+ 0.0000000000000000 &0.0000000000000000 \\
+0.0000000000000000 &0.0000000000000000 \\
+0.035156250000000000&0.035156248639104333\\
+0.046875000000000000&0.046874998075402879 \\  
+0.035156250000000000&0.035156248639104333\\
+ 0.0000000000000000 &0.0000000000000000 \\
+0.0000000000000000 &0.0000000000000000 \\
+
+0.046875000000000000  & 0.046874998075402879\\        
+ 0.062500000000000000&0.062499997278208659 \\        
+0.046875000000000000& 0.046874998075402893 \\ 
+ 0.0000000000000000 &0.0000000000000000 \\
+0.0000000000000000 &0.0000000000000000 \\
+0.035156250000000000 &0.035156248639104333\\        
+0.046875000000000000 &0.046874998075402893 \\         
+0.035156250000000000 &0.035156248639104333 \\
+ 0.0000000000000000 &0.0000000000000000 \\
+ 0.0000000000000000 &0.0000000000000000 \\
+ 0.0000000000000000 &0.0000000000000000 \\
+ 0.0000000000000000 &0.0000000000000000 \\
+ 0.0000000000000000 &0.0000000000000000 \\
+0.0000000000000000 &0.0000000000000000 \\
+  \hline
+\end{tabular}
+
+\clearpage
+Problème 2:
+
+
+\begin{tabular}{|l|l|}
+\hline
+Soluton exacte & Solution approchée\\
+  \hline
+ 	1.0000000000000000& 0.99999999999998568  \\
+   	1.2474039592545230 &1.2474039592543777\\
+1.4794255386042030& 1.4794255386041781 \\
+1.6816387600233340&1.6816387600232015  \\
+	1.8414709848078965&1.8414709848077730 \\ 				
+	0.96891242171064473& 0.96891242171055225 \\
+  1.2163163809651676 & 1.2166011527604081 \\  
+	1.4483379603148476& 1.4487328199716727  \\
+	1.6505511817339789 & 1.6508863315000588   \\
+	1.8103834065185413& 1.8103834065184934   \\
+         0.87758256189037276& 0.87758256189033557   \\   
+1.1249865211448957& 1.1253356462593556  \\
+	1.3570081004945758& 1.3574971485944127  \\
+	1.5592213219137068 & 1.5596309005931421   \\
+ 1.7190535466982693& 1.7190535466981844\\  
+0.73168886887382090&  0.73168886887378481 \\
+0.97909282812834386& 0.97935007831272114   \\
+ 	1.2111144074780240& 1.2114762412017754\\
+      1.4133276288971550& 1.4136352570523356\\   
+ 	1.5731598536817173 & 1.5731598536816251 \\
+   	0.54030230586813977& 0.54030230586806971 \\
+	0.78770626512266273& 0.78770626512260622\\ 
+       1.0197278444723428 & 1.0197278444722835  \\   
+ 	1.2219410658914738& 1.2219410658913852 \\
+	1.3817732906760363& 1.3817732906759350\\
+  
+  \hline
+\end{tabular}
+
+\clearpage
+Problème 3:
+
+
+\begin{tabular}{|l|l|}
+  \hline
+  Solution approchée à t \approx 4&  Solution approchée à t \approx 8\\
+  \hline
+	0.0000000000000000 &	0.0000000000000000\\
+	0.0000000000000000&	0.0000000000000000\\
+	0.0000000000000000 &	0.0000000000000000\\
+	0.0000000000000000&	0.0000000000000000\\
+	0.0000000000000000 &	0.0000000000000000\\
+
+0.99999999604957379 & 0.99999999603632217\\ 
+	0.53887432730927731& 0.53887432805498747 \\
+0.42541043134353207& 0.42541043235843273 \\
+0.53887432730927742 &0.53887432805498747\\
+0.99999999604957379 &0.99999999603632217\\ 
+
+	0.99999999604957379&  0.99999999603632217 \\    
+0.67541043035592563   &0.67541043136751366 \\  
+
+0.56582022220837025& 0.56582022358960593 \\
+	0.67541043035592563 & 0.67541043136751377\\  
+	0.99999999604957379 & 0.99999999603632217 \\
+
+0.99999999604957379 &0.99999999603632217  \\
+	0.53887432730927742 &0.53887432805498736 \\
+0.42541043134353212 &0.42541043235843273\\
+	0.53887432730927742 &0.53887432805498747 \\
+0.99999999604957379&0.99999999603632217 \\
+	
+	0.0000000000000000 &	0.0000000000000000\\
+	0.0000000000000000&	0.0000000000000000\\
+	0.0000000000000000 &	0.0000000000000000\\
+	0.0000000000000000&	0.0000000000000000\\
+	0.0000000000000000 &	0.0000000000000000\\
+
+  \hline
+\end{tabular}
+
+\clearpage
+\begin{center}\textbf{{Commandes de compilation }}\end{center}
+
+
+gfortran  fonctions.f90 
+-IC:/Users/../MPI/Include -LC:/Users/../MPI/Lib -lmsmpi -c
+
+gfortran  matricesparallele.f90 -IC:/Users/../MPI/Include -LC:/Users/../MPI/Lib -lmsmpi -c
+
+gfortran  gradientparallele.f90 -IC:/Users/../MPI/Include -LC:/Users/../MPI/Lib -lmsmpi -c
+
+gfortran  programme.f90 -IC:/Users/../Include -LC:/Users/../Lib -lmsmpi -c
+
+gfortran  -o programme programme.o matricesparallele.o fonctions.o gradientparallele.o -IC:/Users/../MPI/Include -LC:/Users/../MPI/Lib -lmsmpi
+
+où ".." désigne le chemin pour accéder aux répertoires
+\end{document}
