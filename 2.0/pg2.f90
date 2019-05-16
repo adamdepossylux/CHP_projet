@@ -64,6 +64,7 @@ program programme
 			temps_fin= (MPI_WTIME()-temps_debut)
 			call uex2m(x,y,Nx,Ny,i1,iN,usol)
 			temps_fin= (MPI_WTIME()-temps_debut)
+			print*,abs(maxval(U-usol))
 			call Rename(Me,name)
 
 			open (unit =me, file=name)
