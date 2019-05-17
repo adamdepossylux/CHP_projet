@@ -34,8 +34,24 @@
 					double precision, parameter :: pi=3.14159265
 					double precision, intent(in)::x,y,t,Ly,Lx
 					double precision::ff
-					ff=exp(-((x-Lx/2)**2))*(exp(-((y-Ly/2)**2)))*cos((pi/2)*t)
+					ff=exp(-((x-Lx/2.d0)**2))*(exp(-((y-Ly/2.d0)**2)))*cos((pi/2.d0)*t)
 				end function ff
+
+				function uex2(x,y)
+					implicit none
+					double precision, parameter :: pi=3.14159265
+					double precision, intent(in)::x,y,t,Ly,Lx
+					double precision::ff
+					uex2=sin(x)+cos(y)
+				end function uex2
+
+				function uex1(x,y)
+					implicit none
+					double precision, parameter :: pi=3.14159265
+					double precision, intent(in)::x,y,t,Ly,Lx
+					double precision::ff
+					uex2=sin(x)+cos(y)
+				end function uex1
 
 				function gg(x,y,t)
 					implicit none
@@ -51,6 +67,8 @@
 					double precision :: hh
 					hh=1.
 				end function hh
+
+
 
 
 		end module

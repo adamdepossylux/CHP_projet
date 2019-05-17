@@ -4,7 +4,7 @@ program programme
 	use matrices
 	use gradientconjugue
 	implicit none
-	integer,parameter :: Nx=100,Ny=100,NxNy=Nx*Ny
+	integer,parameter :: Nx=3,Ny=3,NxNy=Nx*Ny
 	integer::j1,jN,k1,k2,k3,j,i,i1,iN,statinfo,Np,me,cont,diim,Nt,n2,n5,n1
 	double precision,parameter :: hx=1.d0/(Nx+1),hy=1.d0/(Ny+1),Lx=1.d0,Ly=1.d0,dt=0.01d0,D=1.d0
 	double precision, dimension(:),allocatable :: b,xn,ssm,ssme,produitmatriciel,v,vv,nnz,colonnes,ic,xx
@@ -29,7 +29,7 @@ program programme
 	allocate (b(1:Nx*Ny))
 	allocate (U(1:Nx*Ny))
 	allocate (Uo(1:Nx*Ny))
-	Nt=1
+	Nt=3
 	! axe des abscisses
 	do i=1,Nx+2
 		x(i)=(i-1)*hx
@@ -46,15 +46,20 @@ program programme
 	Uo=0
 	! appel du vecteur initial U contenant au bord les fonctions g et h
 	call laplaciencsr(hx,hy,dt,ic,colonnes,nnz,Nx,Ny)
-	call sm2(x,y,Nx,Ny,ssm,dt,Uo)
+	call sm2(x,y,Nx,Ny,ssm,dt,Uo,hx,hy)
 	b=ssm
-
+	n2=size(b)
+	open(unit=1, file="b.txt",form="formatted",access="sequential")
+		do i=1,n2
+			write(1,*)b(i)
+		enddo
+		close(1)
 	!print*,"hey"
 	do i=1,Nt
 		call gc(nnz,colonnes,ic,b,Nx*Ny,Nx,Ny,xn)
 		U=xn
 		deallocate(ssm)
-		call sm2(x,y,Nx,Ny,ssm,dt,U)
+		call sm2(x,y,Nx,Ny,ssm,dt,U,hx,hy)
 		b=ssm
 		deallocate(xn)
 	end do

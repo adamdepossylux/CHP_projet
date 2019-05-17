@@ -88,10 +88,10 @@ module matrices
 			return
 			end subroutine
 
-			subroutine sm1(x,y,Nx,Ny,ssm,dt,u)  !second memebre
+			subroutine sm1(x,y,Nx,Ny,ssm,dt,u,dx,dy)  !second memebre
 				implicit none
 				integer::Nx,Ny,i,j,k,me,i1,iN,Np,he,statinfo
-				double precision :: dt
+				double precision :: dt,dx,dy
 				double precision, dimension(Nx+2)::x
 				double precision, dimension(Ny+2)::y
 				double precision, dimension(Ny*Nx)::u
@@ -99,28 +99,32 @@ module matrices
 				double precision, dimension(:),allocatable::ssm
 
 				allocate(ssm(Nx*Ny))
-				ssm=0
+				ssm=0.d0
 				do j=1,Ny
 					do i=1,Nx
 						k=i+(j-1)*Nx
-						if ((j==1) .OR. (j==Ny+2))  then
-							ssm(k)=0.d0
-						else if ((i==1) .OR. (i==Nx+2)) then
-							ssm(k)=0.d0
+						if ((j==1)) then
+							ssm(k)=u(k)+f1(x(i+1),y(j+1))*dt
+						else if (j==Ny) then
+							ssm(k)=u(k)+f1(x(i+1),y(j+1))*dt
+						else if (i==1) then
+							ssm(k)=u(k)+f1(x(i+1),y(j+1))*dt
+						else if (i==Nx) then
+							ssm(k)=u(k)+f1(x(i+1),y(j+1))*dt
 						else
-							ssm(k)=f1(x(i),y(j))*dt+u(k)
+							ssm(k)=+u(k)+f1(x(i+1),y(j+1))*dt
 						end if
 					end do
 				end do
 
 			end subroutine sm1
 
-			subroutine sm3(x,y,Nx,Ny,ssm,dt,u,n,Nt)  !second memebre
+			subroutine sm3(x,y,Nx,Ny,ssm,dt,u,n,Nt,dx,dy)  !second memebre
 				implicit none
 				integer::Nx,Ny,i,j,k,me,i1,iN,Np,he,statinfo,n,Nt
-				double precision :: dt,Lx,Ly
-				double precision, dimension(Nx+2)::x
-				double precision, dimension(Ny+2)::y
+				double precision :: dt,Lx,Ly,dx,dy
+				double precision, dimension(Nx)::x
+				double precision, dimension(Ny)::y
 				double precision,dimension(Nt)::t
 				double precision, dimension(Ny*Nx)::u
 				!call charge(me, Np, Ny,j1,jN)
@@ -133,12 +137,16 @@ module matrices
 				do j=1,Ny
 					do i=1,Nx
 						k=i+(j-1)*Nx
-						if ((j==1) .OR. (j==Ny+2))  then
-							ssm(k)=f(x(i),y(j))
-						else if ((i==1) .OR. (i==Nx+2)) then
-							ssm(k)=f(x(i),y(j))
+						if ((j==1)) then
+							ssm(k)=ff(x(i+1),y(j+1),t(n),Ly,Lx)*dt+u(k)+0.d0
+						else if (j==Ny) then
+							ssm(k)=ff(x(i),y(j),t(n),Ly,Lx)*dt+u(k)+0.d0
+						else if (i==1) then!gouche
+							ssm(k)=ff(x(i+1),y(j+1),t(n),Ly,Lx)*dt+u(k)+dt*1.d0/(dx**2)
+						else if (i==Nx) then!droite
+							ssm(k)=ff(x(i+1),y(j+1),t(n),Ly,Lx)*dt+u(k)+dt*1.d0/(dy**2)
 						else
-							ssm(k)=ff(x(i),y(j),t(n),Ly,Lx)*dt+u(k)
+							ssm(k)=ff(x(i+1),y(j+1),t(n),Ly,Lx)*dt+u(k)
 						end if
 					end do
 				end do
@@ -147,10 +155,10 @@ module matrices
 
 
 
-			subroutine sm2(x,y,Nx,Ny,ssm,dt,u)  !second memebre
+			subroutine sm2(x,y,Nx,Ny,ssm,dt,u,dx,dy)  !second memebre
 				implicit none
 				integer::Nx,Ny,i,j,k,me,i1,iN,Np,he,statinfo
-				double precision :: dt
+				double precision :: dt,dx,dy
 				double precision, dimension(Nx+2)::x
 				double precision, dimension(Ny+2)::y
 				double precision, dimension(Ny*Nx)::u
@@ -162,12 +170,16 @@ module matrices
 				do j=1,Ny
 					do i=1,Nx
 						k=i+(j-1)*Nx
-						if ((j==1) .OR. (j==Ny+2))  then
-							ssm(k)=f(x(i),y(j))
-						else if ((i==1) .OR. (i==Nx+2)) then
-							ssm(k)=f(x(i),y(j))
+						if ((j==1)) then
+							ssm(k)=f(x(i+1),y(j+1))*dt+u(k)+dt*f(x(i+1),y(j))/(dy**2)
+						else if (j==Ny) then
+							ssm(k)=f(x(i+1),y(j+1))*dt+u(k)+dt*f(x(i+1),y(j))/(dy**2)
+						else if (i==1) then!gouche
+							ssm(k)=f(x(i+1),y(j+1))*dt+u(k)+dt*f(x(i),y(j+1))/(dx**2)
+						else if (i==Nx) then!droite
+							ssm(k)=f(x(i+1),y(j+1))*dt+u(k)+dt*f(x(Nx+2),y(j+1))/(dx**2)
 						else
-							ssm(k)=f(x(i),y(j))*dt+u(k)
+							ssm(k)=f(x(i+1),y(j+1))*dt+u(k)
 						end if
 					end do
 				end do
